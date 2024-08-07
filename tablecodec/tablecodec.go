@@ -110,34 +110,23 @@ func EncodeIndexSeekKey(tableID int64, idxID int64, encodedValue []byte) kv.Key 
 
 // DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
 func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues []byte, err error) {
-	/* Project 1-2: your code here
-	 * DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
-	 * Decode is actually the reverse of encoding, so you can refer to EncodeIndexSeekKey.
-	 *
-	 * Parameters
-	 *   key: the key needs to be decoded. It may be invalid.
-	 *
-	 * Return value
-	 *   tableID:     decoded value.
-	 *   indexID:     decoded value.
-	 *   indexValues: decoded value.
-	 *   err:         error during decoding, otherwise nil.
-	 *
-	 * DecodeRecordKey may need to follow the steps:
-	 *   1. check if the key is valid.
-	 *   2. decode tableID.
-	 *   3. decode indexID.
-	 *   4. decode indexValues.
-	 *   5. return decoded value.
-	 *
-	 * Some hints:
-	 *   1. you may need codec.DecodeInt to decode string to int
-	 *   2. const `prefixLen`, `idLen` and others are useful.
-	 *   3. errInvalidRecordKey.GenWithStack is a useful function to generate invalid record key errors.
-	 *   4. if an error occurs, return 0 as tableID, 0 as indexID, nil as indexValues and the error.
-	 *   5. understanding the coding rules is a prerequisite for implementing this function,
-	 *      you can learn it in the projection 1-2 course documentation.
-	 */
+	// go test github.com/pingcap/tidb/tablecodec -check.f TestDecodeIndexKey
+	if key == nil || !key.HasPrefix(tablePrefix) {
+		return 0, 0, nil, errInvalidIndexKey
+	}
+	key = key[tablePrefixLength:]
+	key, tableID, err = codec.DecodeInt(key)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	if !key.HasPrefix(indexPrefixSep) {
+		return 0, 0, nil, errInvalidIndexKey
+	}
+	key = key[recordPrefixSepLength:]
+	indexValues, indexID, err = codec.DecodeInt(key)
+	if err != nil {
+		return 0, 0, nil, err
+	}
 	return tableID, indexID, indexValues, nil
 }
 
